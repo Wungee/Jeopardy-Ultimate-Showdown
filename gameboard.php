@@ -4,6 +4,7 @@ require_once('opentdb.php');
 
 // Initialize gameboard for each round
 if (!isset($_SESSION['board'])) {
+
     // Retrieve categories
     $categories = fetch_categories();
     shuffle($categories);
@@ -11,26 +12,37 @@ if (!isset($_SESSION['board'])) {
 
     $_SESSION['categories'] = $chosen_categories;
 
-    // Generate board questions: array[category][question]
+    // Generate 5 questions for each selected category
     $_SESSION['board'] = [];
     foreach ($chosen_categories as $cat) {
-        $_SESSION['board'][$cat['id']] = fetch_questions($cat['id']);
+        $questions = fetch_questions($cat['id'], 5, 'medium');
+
+        // If not enough questions, insert placeholder
+        while (count($questions) < 5) {
+            $questions[] = [
+                "category" => $cat['name'],
+                "question" => "[No question available]",
+                "correct_answer" => "",
+                "incorrect_answers" => [],
+            ];
+        }
+        $_SESSION['board'][$cat['id']] = $questions;
     }
 
-    // Generate Daily Double locations
-    $_SESSION['daily_double'] = get_random_indices(30, 2); // 2 spots (out of 6x5)
+    // Pick 2 Daily Doubles
+    $_SESSION['daily_double'] = get_random_indices(30, 2);
 }
 
-// Handle question selection
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category']) && isset($_POST['qnum'])) {
-    $_SESSION['current_category'] = $_POST['category'];
-    $_SESSION['current_qnum']     = $_POST['qnum'];
+// Handle clicking on a question cell
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cell'])) {
+    list($catID, $qnum) = explode(':', $_POST['cell']);
+
+    $_SESSION['current_category'] = $catID;
+    $_SESSION['current_qnum'] = $qnum;
+
     header('Location: question.php');
     exit();
 }
-
-// Board display logic below...
-
 ?>
 <!DOCTYPE html>
 <html>
@@ -39,55 +51,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['category']) && isset(
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="gameboard-screen">
-    <div class="gameboard-container">
-        <!-- Show round title etc -->
+    <div class="gameboard-container scale-in">
         <div class="game-header">
-            <h2 class="round-title pulse-animation">Round <?php echo $_SESSION['round'] ?? 1; ?></h2>
+            <h2 class="round-title pulse-animation">
+                Round <?php echo $_SESSION['round'] ?? 1; ?>
+            </h2>
         </div>
 
-        <!-- Jeopardy board categories -->
         <div class="board-wrapper">
             <form method="POST" action="gameboard.php">
                 <div class="game-board">
+
+                <!-- Category names -->
+                <?php foreach ($_SESSION['categories'] as $cat): ?>
+                    <div class="category-header scale-in shimmer-animation">
+                        <?php echo htmlspecialchars($cat['name']); ?>
+                    </div>
+                <?php endforeach; ?>
+
+                <!-- 5 rows of questions -->
                 <?php
-                $cat_idx = 0;
-                for ($cat = 0; $cat < 6; $cat++):
-                    $cat_data = $_SESSION['categories'][$cat];
-                    echo '<div class="category-header">'.$cat_data['name'].'</div>';
-                endfor;
+                for ($row = 0; $row < 5; $row++) {
+                    foreach ($_SESSION['categories'] as $catIdx => $catData) {
 
-                for ($row = 0; $row < 5; $row++):
-                    for ($cat = 0; $cat < 6; $cat++):
-                        $cat_data  = $_SESSION['categories'][$cat];
-                        $q_id      = $cat_data['id'];
-                        $key       = $cat * 5 + $row;
-                        $answered  = isset($_SESSION['answered_questions'][$key]);
-                        $is_dd     = in_array($key, $_SESSION['daily_double']);
-                        $value     = ($row+1)*200 * ($_SESSION['round'] ?? 1);
+                        $catID = $catData['id'];
+                        $question = $_SESSION['board'][$catID][$row];
 
-                        echo '<button type="submit" name="category" value="'.$q_id.'" class="question-box '.($answered?'answered':'available').'">';
-                        echo '<input type="hidden" name="qnum" value="'.$row.'">';
-                        echo $value;
-                        if ($is_dd) echo '<span class="dd-indicator shimmer-animation">DD</span>';
-                        echo '</button>';
-                    endfor;
-                endfor;
+                        $key = $catIdx * 5 + $row;
+                        $answered = isset($_SESSION['answered_questions'][$key]);
+                        $is_dd = in_array($key, $_SESSION['daily_double']);
+                        $value = ($row + 1) * 200 * ($_SESSION['round'] ?? 1);
+
+                        $not_available = ($question['question'] == "[No question available]");
+                        $is_disabled = $answered || $not_available;
+
+                        $cellValue = $catID . ':' . $row;
+                        ?>
+
+                        <button
+                            type="submit"
+                            name="cell"
+                            value="<?php echo $cellValue; ?>"
+                            class="question-box <?php echo $answered ? 'answered' : 'available'; ?> scale-in"
+                            <?php echo $is_disabled ? 'disabled' : ''; ?>
+                        >
+                            <?php echo $not_available ? 'N/A' : $value; ?>
+                            <?php if ($is_dd) echo '<span class="dd-indicator shimmer-animation">DD</span>'; ?>
+                        </button>
+
+                    <?php } // end foreach category
+                } // end for rows
                 ?>
+
                 </div>
             </form>
         </div>
+
         <!-- Player panels -->
         <div class="player-panels">
         <?php
-        foreach ($_SESSION['players'] as $pid=>$pdata) {
-            echo '<div class="player-card '.($pid==$_SESSION['current_player']?'active-player':'').'">';
-            echo '<div class="player-name">'.$pdata['name'].'</div>';
-            echo '<div class="player-score">'.$pdata['score'].'</div>';
+        foreach ($_SESSION['players'] as $pid => $pdata) {
+            echo '<div class="player-card ' . ($pid == $_SESSION['current_player'] ? 'active-player' : '') . '">';
+            echo '<div class="player-name">' . htmlspecialchars($pdata['name']) . '</div>';
+            echo '<div class="player-score">' . htmlspecialchars($pdata['score']) . '</div>';
             echo '</div>';
         }
         ?>
         </div>
-        <!-- Controls (e.g., next round, Final Jeopardy) -->
     </div>
 </body>
 </html>
