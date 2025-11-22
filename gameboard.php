@@ -84,8 +84,8 @@ if ($total_answered >= 5) {
         header('Location: gameboard.php');
         exit();
     } else {
-        // Game complete, go to results
-        header('Location: results.php');
+        // Round 2 complete, go to Final Jeopardy
+        header('Location: final-jeopardy.php');
         exit();
     }
 }
@@ -205,9 +205,9 @@ if ($total_answered >= 5) {
                     </button>
                 </form>
             <?php elseif ($total_answered >= 5 && $_SESSION['round'] == 2): ?>
-                <form method="GET" action="results.php">
+                <form method="GET" action="final-jeopardy.php">
                     <button type="submit" class="option-button">
-                        VIEW RESULTS
+                        PROCEED TO FINAL JEOPARDY
                     </button>
                 </form>
             <?php endif; ?>
