@@ -1,6 +1,7 @@
 <?php
 session_start();
 
+// Handle player count submission
 $player_count = isset($_POST['player_count']) ? intval($_POST['player_count']) : 0;
 $show_name_inputs = false;
 
@@ -44,21 +45,31 @@ if (isset($_POST['player_names']) && isset($_POST['players'])) {
 <body class="setup-screen">
     <div class="setup-container fade-in">
         <h2 class="section-title shimmer-animation">Player Setup</h2>
+        
         <?php if (!$show_name_inputs): ?>
+            <!-- Step 1: Select number of players -->
             <div class="setup-box">
                 <p class="setup-instruction">How many players will be competing?</p>
                 <form method="POST" action="player-setup.php">
                     <div class="player-count-options">
-                        <button type="submit" name="player_count" value="2" class="count-button glow-hover">2 PLAYERS</button>
-                        <button type="submit" name="player_count" value="3" class="count-button glow-hover">3 PLAYERS</button>
-                        <button type="submit" name="player_count" value="4" class="count-button glow-hover">4 PLAYERS</button>
+                        <button type="submit" name="player_count" value="2" class="count-button glow-hover">
+                            2 PLAYERS
+                        </button>
+                        <button type="submit" name="player_count" value="3" class="count-button glow-hover">
+                            3 PLAYERS
+                        </button>
+                        <button type="submit" name="player_count" value="4" class="count-button glow-hover">
+                            4 PLAYERS
+                        </button>
                     </div>
                 </form>
+                
                 <form method="GET" action="index.php" class="back-form">
                     <button type="submit" class="back-button">← Back to Home</button>
                 </form>
             </div>
         <?php else: ?>
+            <!-- Step 2: Enter player names -->
             <div class="setup-box">
                 <p class="setup-instruction">Enter player names:</p>
                 <form method="POST" action="player-setup.php">
@@ -78,9 +89,13 @@ if (isset($_POST['player_names']) && isset($_POST['players'])) {
                             </div>
                         <?php endfor; ?>
                     </div>
+                    
                     <input type="hidden" name="player_names" value="1">
-                    <button type="submit" class="continue-button glow-hover">CONTINUE TO GAME</button>
+                    <button type="submit" class="continue-button glow-hover">
+                        CONTINUE TO GAME
+                    </button>
                 </form>
+                
                 <form method="POST" action="player-setup.php" class="back-form">
                     <button type="submit" class="back-button">← Change Player Count</button>
                 </form>
