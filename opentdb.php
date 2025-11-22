@@ -8,19 +8,19 @@
 function fetch_categories() {
     $url = "https://opentdb.com/api_category.php";
     
-    // Set context options for timeout
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10, // 10 second timeout
-            'ignore_errors' => true
-        ]
-    ]);
+    // Use cURL instead of file_get_contents
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For local dev
     
-    $resp = @file_get_contents($url, false, $context);
+    $resp = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
     
-    if ($resp === false) {
-        // API call failed, return fallback categories
-        error_log("OpenTDB API: Failed to fetch categories");
+    if ($resp === false || !empty($error)) {
+        error_log("OpenTDB API: Failed to fetch categories - " . $error);
         return get_fallback_categories();
     }
     
@@ -44,18 +44,19 @@ function fetch_categories() {
 function fetch_questions($category, $amount = 5, $difficulty = 'medium') {
     $url = "https://opentdb.com/api.php?amount={$amount}&category={$category}&type=multiple&difficulty={$difficulty}";
     
-    // Set context options for timeout
-    $context = stream_context_create([
-        'http' => [
-            'timeout' => 10,
-            'ignore_errors' => true
-        ]
-    ]);
+    // Use cURL instead of file_get_contents
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); // For local dev
     
-    $resp = @file_get_contents($url, false, $context);
+    $resp = curl_exec($ch);
+    $error = curl_error($ch);
+    curl_close($ch);
     
-    if ($resp === false) {
-        error_log("OpenTDB API: Failed to fetch questions for category {$category}");
+    if ($resp === false || !empty($error)) {
+        error_log("OpenTDB API: Failed to fetch questions for category {$category} - " . $error);
         return get_fallback_questions($category, $amount);
     }
     
@@ -139,12 +140,40 @@ function get_fallback_questions($category, $amount) {
             'question' => 'How many players are on a basketball team?',
             'correct_answer' => '5',
             'incorrect_answers' => ['6', '7', '4']
+        ],
+        [
+            'category' => 'Entertainment',
+            'type' => 'multiple',
+            'difficulty' => 'medium',
+            'question' => 'Who directed the movie "Titanic"?',
+            'correct_answer' => 'James Cameron',
+            'incorrect_answers' => ['Steven Spielberg', 'Martin Scorsese', 'Christopher Nolan']
+        ],
+        [
+            'category' => 'Technology',
+            'type' => 'multiple',
+            'difficulty' => 'medium',
+            'question' => 'What does CPU stand for?',
+            'correct_answer' => 'Central Processing Unit',
+            'incorrect_answers' => ['Computer Personal Unit', 'Central Program Utility', 'Central Processor Unit']
+        ],
+        [
+            'category' => 'Animals',
+            'type' => 'multiple',
+            'difficulty' => 'medium',
+            'question' => 'What is the largest land animal?',
+            'correct_answer' => 'African Elephant',
+            'incorrect_answers' => ['Giraffe', 'Hippopotamus', 'White Rhinoceros']
         ]
     ];
     
     $questions = [];
+    // Use category ID to pick different questions for each category
+    $start_index = ($category % count($fallback_pool));
+    
     for ($i = 0; $i < $amount; $i++) {
-        $questions[] = $fallback_pool[$i % count($fallback_pool)];
+        $index = ($start_index + $i) % count($fallback_pool);
+        $questions[] = $fallback_pool[$index];
     }
     
     return $questions;
